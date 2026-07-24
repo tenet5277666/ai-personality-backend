@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ai-personality-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: your_password_here
+      MYSQL_DATABASE: ai_personality
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ai-personality-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  backend:
+    build:
+      context: ../.
+      dockerfile: docker/Dockerfile
+    container_name: ai-personality-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASS: your_password_here
+      DB_NAME: ai_personality
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      LLM_API_URL: https://api.deepseek.com/v1/chat/completions
+      LLM_API_KEY: your_api_key_here
+      LLM_MODEL: deepseek-chat
+    depends_on:
+      - mysql
+      - qdrant
+
+volumes:
+  mysql_data:
+  qdrant_data:

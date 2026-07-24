@@ -1,0 +1,17 @@
+# 环境变量（含 API Key，绝不提交）
+.env
+
+# 数据库文件
+*.db
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 向量存储数据
+chroma_db/
+
+# IDE
+.vscode/
+.idea/
