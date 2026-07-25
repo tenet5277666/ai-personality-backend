@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  # ===== PostgreSQL 数据库 =====
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: aiapp
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme_strong_pwd}
+      POSTGRES_DB: ai_personality
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiapp -d ai_personality"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ===== FastAPI 后端 =====
+  backend:
+    build: .
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://aiapp:${DB_PASSWORD:-changeme_strong_pwd}@db:5432/ai_personality"
+      LLM_API_KEY: "${LLM_API_KEY}"
+      LLM_MODEL: "${LLM_MODEL:-qwen-plus}"
+      LLM_API_URL: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+      SECRET_KEY: "${SECRET_KEY}"
+      PORT: "8100"
+      VECTOR_DB_PATH: "/tmp/vector_store"
+    volumes:
+      - vector_data:/tmp/vector_store
+
+  # ===== Nginx 反向代理 + 静态前端 =====
+  nginx:
+    image: nginx:alpine
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./frontend-dist:/usr/share/nginx/html:ro
+    restart: always
+
+volumes:
+  pgdata:
+  vector_data:
